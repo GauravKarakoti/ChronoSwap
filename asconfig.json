@@ -1,0 +1,21 @@
+{
+    "targets": {
+        "release": {
+            "sourceMap": true,
+            "optimizeLevel": 3,
+            "shrinkLevel": 3,
+            "converge": true,
+            "noAssert": false,
+            "exportRuntime": true,
+            "bindings": false
+        }
+    },
+    "options": {
+        "exportTable": true,
+        "importTable": true,
+        "use": ["ASC_RTRACE=1"]
+    },
+    "entries": [
+        "./src/chronoswap.ts"
+    ]
+}
