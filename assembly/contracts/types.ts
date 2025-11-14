@@ -2,16 +2,16 @@ import { serializable } from "as-json";
 
 @serializable // <-- ADD THIS
 export class Order {
-  id: string;
-  user: string;
-  fromToken: string;
-  toToken: string;
-  amount: u64;
-  limitPrice: u64;
-  expiry: u64;
-  status: OrderStatus;
-  createdAt: u64;
-  updatedAt: u64;
+  id: string = "";
+  user: string = "";
+  fromToken: string = "";
+  toToken: string = "";
+  amount: u64 = 0;
+  limitPrice: u64 = 0;
+  expiry: u64 = 0;
+  status: OrderStatus = OrderStatus.PENDING;
+  createdAt: u64 = 0;
+  updatedAt: u64 = 0;
 }
 
 export enum OrderStatus {
@@ -23,16 +23,16 @@ export enum OrderStatus {
 
 @serializable // <-- ADD THIS
 export class Strategy {
-  id: string;
-  user: string;
-  type: StrategyType;
-  orders: string[];
-  frequency: u64;
-  nextExecution: u64;
-  totalExecuted: u64;
-  status: StrategyStatus;
-  config: string; // JSON string of strategy config
-  updatedAt: u64; // <-- ADD THIS LINE
+  id: string = "";
+  user: string = "";
+  type: StrategyType = StrategyType.DCA;
+  orders: string[] = [];
+  frequency: u64 = 0;
+  nextExecution: u64 = 0;
+  totalExecuted: u64 = 0;
+  status: StrategyStatus = StrategyStatus.ACTIVE;
+  config: string = ""; // JSON string of strategy config
+  updatedAt: u64 = 0; // <-- ADD THIS LINE
 }
 
 export enum StrategyType {
@@ -49,8 +49,8 @@ export enum StrategyStatus {
 }
 
 export class Route {
-  dex: string;
-  amountOut: u64;
-  path: string[];
-  gasEstimate: u64;
+  dex: string = "";
+  amountOut: u64 = 0;
+  path: string[] = [];
+  gasEstimate: u64 = 0;
 }

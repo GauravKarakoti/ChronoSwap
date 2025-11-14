@@ -7,15 +7,21 @@
             "converge": true,
             "noAssert": false,
             "exportRuntime": true,
-            "bindings": false
+            "bindings": false,
+            "outFile": "build/main.wasm"
         }
     },
     "options": {
         "exportTable": true,
         "importTable": true,
-        "use": ["ASC_RTRACE=1"]
+        "use": ["ASC_RTRACE=1"],
+        "paths": {
+          "as-json": [
+            "./node_modules/as-json/assembly/index.ts"
+          ]
+        }
     },
     "entries": [
-        "./src/chronoswap.ts"
+        "./assembly/contracts/main.ts"
     ]
 }

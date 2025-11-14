@@ -3,6 +3,13 @@
   "include": [
     "**/*.ts"
   ],
+  "compilerOptions": {
+    "paths": {
+      "as-json": [
+        "../node_modules/as-json/assembly/index.ts"
+      ]
+    }
+  },
   "typedocOptions": {
     "exclude": "assembly/**/__tests__",
     "excludePrivate": true,

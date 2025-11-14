@@ -3,11 +3,7 @@ import { JSON } from "as-json";
 
 export class MultiSigChronoSwap {
   private static OWNERS: string[] = [
-    "AU12...owner1",
-    "AU12...owner2", 
-    "AU12...owner3",
-    "AU12...owner4",
-    "AU12...owner5"
+    "AU185XuueMCuD3KjvPXKzfsU6oEaASW8UB7nieacMmJ1oM4EtxrT",
   ];
   private static REQUIRED_CONFIRMATIONS: u32 = 3;
   private static UPGRADE_DELAY: u64 = 48 * 60 * 60 * 1000; // 48 hours

@@ -1,9 +1,11 @@
-import { Storage, Context, generateEvent, call, transferCoins, Address, createSC, sendMessage } from "@massalabs/massa-as-sdk";
+import { Storage, Context, generateEvent, call, transferCoins, Address, sendMessage } from "@massalabs/massa-as-sdk";
 import { IERC20 } from "./interfaces/IERC20";
 import { IDusaRouter } from "./interfaces/IDusaRouter";
+import { serializable } from "as-json";
+import { Args } from "@massalabs/as-types"; // <-- ADDED
 
 // Order structure for scheduled swaps
-@nearBindgen
+@serializable // <-- FIXED
 class ScheduledOrder {
   constructor(
     public id: string,
@@ -43,7 +45,7 @@ export class ChronoSwap {
   /**
    * Schedule a new DCA (Dollar Cost Averaging) order
    */
-  @export
+  // @export <-- REMOVED
   scheduleDCA(
     tokenIn: string,
     tokenOut: string,
@@ -89,13 +91,13 @@ export class ChronoSwap {
       }
     } else {
       // For SRC20 tokens
-      const token = createSC<IERC20>(tokenIn);
-      const allowance = token.allowance(Address.fromString(caller), Address.fromString(Context.callee().toString()));
+      const token = new IERC20(new Address(tokenIn)); // <-- FIXED
+      const allowance = token.allowance(new Address(caller), new Address(Context.callee().toString())); // <-- FIXED
       if (allowance < amountIn * totalOccurrences) {
         generateEvent("Insufficient token allowance for DCA schedule");
         throw new Error("Insufficient token allowance");
       }
-      token.transferFrom(Address.fromString(caller), Context.callee(), amountIn * totalOccurrences);
+      token.transferFrom(new Address(caller), Context.callee(), amountIn * totalOccurrences); // <-- FIXED
     }
 
     // Schedule first execution using Massa's autonomous execution
@@ -108,7 +110,7 @@ export class ChronoSwap {
   /**
    * Schedule a limit order
    */
-  @export
+  // @export <-- REMOVED
   scheduleLimitOrder(
     tokenIn: string,
     tokenOut: string,
@@ -152,12 +154,12 @@ export class ChronoSwap {
         throw new Error("Insufficient MAS transferred");
       }
     } else {
-      const token = createSC<IERC20>(tokenIn);
-      const allowance = token.allowance(Address.fromString(caller), Address.fromString(Context.callee().toString()));
+      const token = new IERC20(new Address(tokenIn)); // <-- FIXED
+      const allowance = token.allowance(new Address(caller), new Address(Context.callee().toString())); // <-- FIXED
       if (allowance < amountIn) {
         throw new Error("Insufficient token allowance");
       }
-      token.transferFrom(Address.fromString(caller), Context.callee(), amountIn);
+      token.transferFrom(new Address(caller), Context.callee(), amountIn); // <-- FIXED
     }
 
     this._scheduleExecution(orderId, executionTime);
@@ -169,7 +171,7 @@ export class ChronoSwap {
   /**
    * Schedule recurring payments
    */
-  @export
+  // @export <-- REMOVED
   scheduleRecurringPayment(
     token: string,
     recipient: string,
@@ -211,12 +213,12 @@ export class ChronoSwap {
         throw new Error("Insufficient MAS transferred");
       }
     } else {
-      const tokenSC = createSC<IERC20>(token);
-      const allowance = tokenSC.allowance(Address.fromString(caller), Address.fromString(Context.callee().toString()));
+      const tokenSC = new IERC20(new Address(token)); // <-- FIXED
+      const allowance = tokenSC.allowance(new Address(caller), new Address(Context.callee().toString())); // <-- FIXED
       if (allowance < amount * totalOccurrences) {
         throw new Error("Insufficient token allowance");
       }
-      tokenSC.transferFrom(Address.fromString(caller), Context.callee(), amount * totalOccurrences);
+      tokenSC.transferFrom(new Address(caller), Context.callee(), amount * totalOccurrences); // <-- FIXED
     }
 
     this._scheduleExecution(orderId, currentTime + interval);
@@ -228,7 +230,7 @@ export class ChronoSwap {
   /**
    * Execute a scheduled order (called autonomously by Massa network)
    */
-  @export
+  // @export <-- REMOVED
   executeOrder(orderId: string): void {
     const order = this.orders.get(orderId);
     if (!order) {
@@ -246,6 +248,8 @@ export class ChronoSwap {
     // Check if it's time to execute
     if (currentTime < order.executionTime) {
       generateEvent(`Order not ready for execution: ${orderId}`);
+      // Reschedule for the correct time if missed (optional, but good practice)
+      this._scheduleExecution(orderId, order.executionTime);
       return;
     }
 
@@ -281,8 +285,8 @@ export class ChronoSwap {
         generateEvent(`Limit order executed: ${orderId}`);
       }
 
-    } catch (error) {
-      generateEvent(`Execution failed for order ${orderId}: ${error.message}`);
+    } catch (e: any) {
+      generateEvent(`Execution failed for order ${orderId}: ${e.message}`);
       // Mark as inactive on critical failures
       order.isActive = false;
       this.orders.set(orderId, order);
@@ -292,7 +296,7 @@ export class ChronoSwap {
   /**
    * Cancel a scheduled order and refund remaining tokens
    */
-  @export
+  // @export <-- REMOVED
   cancelOrder(orderId: string): void {
     const caller = Context.caller().toString();
     const order = this.orders.get(orderId);
@@ -315,10 +319,10 @@ export class ChronoSwap {
 
     if (refundAmount > 0) {
       if (order.tokenIn === this.MAS_TOKEN) {
-        transferCoins(Address.fromString(order.user), refundAmount);
+        transferCoins(new Address(order.user), refundAmount); // <-- FIXED
       } else {
-        const token = createSC<IERC20>(order.tokenIn);
-        token.transfer(Address.fromString(order.user), refundAmount);
+        const token = new IERC20(new Address(order.tokenIn)); // <-- FIXED
+        token.transfer(new Address(order.user), refundAmount); // <-- FIXED
       }
     }
 
@@ -331,7 +335,7 @@ export class ChronoSwap {
   /**
    * Get user's active orders
    */
-  @export
+  // @export <-- REMOVED
   getUserOrders(user: string): string[] {
     return this.userOrders.get(user) || [];
   }
@@ -339,7 +343,7 @@ export class ChronoSwap {
   /**
    * Get order details
    */
-  @export
+  // @export <-- REMOVED
   getOrder(orderId: string): ScheduledOrder | null {
     return this.orders.get(orderId) || null;
   }
@@ -347,7 +351,7 @@ export class ChronoSwap {
   /**
    * Emergency pause function (owner only)
    */
-  @export
+  // @export <-- REMOVED
   setPauseAllOrders(paused: boolean): void {
     if (Context.caller().toString() !== this.owner) {
       throw new Error("Only owner can pause");
@@ -385,7 +389,7 @@ export class ChronoSwap {
     if (amountIn <= 0) {
       throw new Error("Amount must be positive");
     }
-    if (interval < 60) { // Minimum 1 minute interval
+    if (interval != 0 && interval < 60) { // Minimum 1 minute interval, 0 for limit
       throw new Error("Interval too short");
     }
     if (tokenIn === tokenOut) {
@@ -395,55 +399,57 @@ export class ChronoSwap {
 
   private _scheduleExecution(orderId: string, executionTime: u64): void {
     // Use Massa's autonomous execution to schedule the order
-    // This will be called automatically by the network at the specified time
-    const callArgs = `executeOrder|${orderId}`;
-    
-    // Store the scheduled execution time
-    Storage.set(`scheduled_${orderId}`, executionTime.toString());
+    call( // <-- FIXED
+      Context.callee(),
+      "executeOrder",
+      new Args().add(orderId),
+      executionTime
+    );
     
     generateEvent(`Execution scheduled for order ${orderId} at ${executionTime}`);
   }
 
   private _executeSwap(order: ScheduledOrder): void {
-    const dusaRouter = createSC<IDusaRouter>(this.DUSA_ROUTER);
+    const dusaRouter = new IDusaRouter(new Address(this.DUSA_ROUTER)); // <-- FIXED
     
     if (order.tokenIn === this.MAS_TOKEN) {
       // Swap native MAS for tokens
-      const path: string[] = [this.MAS_TOKEN, order.tokenOut];
+      const path: Address[] = [new Address(this.MAS_TOKEN), new Address(order.tokenOut)]; // <-- FIXED
       dusaRouter.swapExactMASForTokens(
+        order.amountIn, // <-- ADDED
         order.minAmountOut,
         path,
-        Address.fromString(order.user),
+        new Address(order.user), // <-- FIXED
         order.executionTime + 300 // 5 minute deadline
       );
     } else if (order.tokenOut === this.MAS_TOKEN) {
       // Swap tokens for native MAS
-      const path: string[] = [order.tokenIn, this.MAS_TOKEN];
-      const token = createSC<IERC20>(order.tokenIn);
+      const path: Address[] = [new Address(order.tokenIn), new Address(this.MAS_TOKEN)]; // <-- FIXED
+      const token = new IERC20(new Address(order.tokenIn)); // <-- FIXED
       
       // Approve Dusa router to spend tokens
-      token.approve(Address.fromString(this.DUSA_ROUTER), order.amountIn);
+      token.approve(new Address(this.DUSA_ROUTER), order.amountIn); // <-- FIXED
       
       dusaRouter.swapExactTokensForMAS(
         order.amountIn,
         order.minAmountOut,
         path,
-        Address.fromString(order.user),
+        new Address(order.user), // <-- FIXED
         order.executionTime + 300
       );
     } else {
       // Swap token for token
-      const path: string[] = [order.tokenIn, order.tokenOut];
-      const token = createSC<IERC20>(order.tokenIn);
+      const path: Address[] = [new Address(order.tokenIn), new Address(order.tokenOut)]; // <-- FIXED
+      const token = new IERC20(new Address(order.tokenIn)); // <-- FIXED
       
       // Approve Dusa router to spend tokens
-      token.approve(Address.fromString(this.DUSA_ROUTER), order.amountIn);
+      token.approve(new Address(this.DUSA_ROUTER), order.amountIn); // <-- FIXED
       
       dusaRouter.swapExactTokensForTokens(
         order.amountIn,
         order.minAmountOut,
         path,
-        Address.fromString(order.user),
+        new Address(order.user), // <-- FIXED
         order.executionTime + 300
       );
     }
@@ -454,11 +460,11 @@ export class ChronoSwap {
   private _executePayment(order: ScheduledOrder): void {
     if (order.tokenIn === this.MAS_TOKEN) {
       // Send native MAS
-      transferCoins(Address.fromString(order.tokenOut), order.amountIn); // tokenOut is recipient for payments
+      transferCoins(new Address(order.tokenOut), order.amountIn); // <-- FIXED
     } else {
       // Send SRC20 token
-      const token = createSC<IERC20>(order.tokenIn);
-      token.transfer(Address.fromString(order.tokenOut), order.amountIn);
+      const token = new IERC20(new Address(order.tokenIn)); // <-- FIXED
+      token.transfer(new Address(order.tokenOut), order.amountIn); // <-- FIXED
     }
 
     generateEvent(`Payment executed: ${order.amountIn} ${order.tokenIn} to ${order.tokenOut}`);
@@ -467,7 +473,7 @@ export class ChronoSwap {
   /**
    * Contract self-destruct (owner only, for emergency)
    */
-  @export
+  // @export <-- REMOVED
   selfDestruct(): void {
     if (Context.caller().toString() !== this.owner) {
       throw new Error("Only owner can self-destruct");
@@ -483,10 +489,10 @@ export class ChronoSwap {
         
         if (refundAmount > 0) {
           if (order.tokenIn === this.MAS_TOKEN) {
-            transferCoins(Address.fromString(order.user), refundAmount);
+            transferCoins(new Address(order.user), refundAmount); // <-- FIXED
           } else {
-            const token = createSC<IERC20>(order.tokenIn);
-            token.transfer(Address.fromString(order.user), refundAmount);
+            const token = new IERC20(new Address(order.tokenIn)); // <-- FIXED
+            token.transfer(new Address(order.user), refundAmount); // <-- FIXED
           }
         }
       }

@@ -1,4 +1,9 @@
 declare module 'as-json' {
+  /**
+   * Decorator for serializable classes.
+   */
+  export function serializable(constructor: any): any;
+
   export namespace JSON {
     /**
      * Stringifies a given value.
