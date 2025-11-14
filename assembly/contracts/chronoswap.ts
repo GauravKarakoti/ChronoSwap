@@ -1,5 +1,7 @@
 import { Storage, Context, generateEvent, call } from '@massalabs/massa-as-sdk';
 import { Order, OrderStatus, Strategy, StrategyType, StrategyStatus } from './types';
+import { Args } from '@massalabs/as-types'; // <-- ADD THIS
+import { JSON } from "as-json";
 
 export class ChronoSwap {
   // Contract constants
@@ -25,9 +27,6 @@ export class ChronoSwap {
     }
   }
 
-  /**
-   * Create a new DCA strategy
-   */
   createDCAStrategy(
     fromToken: string,
     toToken: string,
@@ -38,24 +37,25 @@ export class ChronoSwap {
     const caller = Context.caller().toString();
     const strategyId = this._generateStrategyId();
     
-    const strategy: Strategy = {
-      id: strategyId,
-      user: caller,
-      type: StrategyType.DCA,
-      orders: [],
-      frequency: frequency,
-      nextExecution: Context.timestamp() + frequency,
-      totalExecuted: 0,
-      status: StrategyStatus.ACTIVE,
-      config: `{"fromToken":"${fromToken}","toToken":"${toToken}","amount":${amount},"duration":${duration}}`
-    };
+    // FIX: Change object literal to class instance
+    const strategy = new Strategy();
+    strategy.id = strategyId;
+    strategy.user = caller;
+    strategy.type = StrategyType.DCA;
+    strategy.orders = [];
+    strategy.frequency = frequency;
+    strategy.nextExecution = Context.timestamp() + frequency;
+    strategy.totalExecuted = 0;
+    strategy.status = StrategyStatus.ACTIVE;
+    strategy.config = `{"fromToken":"${fromToken}","toToken":"${toToken}","amount":${amount},"duration":${duration}}`;
 
     // Store strategy
-    Storage.set(`strategy_${strategyId}`, strategy);
+    // FIX: Stringify the strategy object before storing
+    Storage.set(`strategy_${strategyId}`, JSON.stringify(strategy));
     
     // Update user's strategies
     const userStrategies = Storage.get(`user_strategies_${caller}`) || "[]";
-    const strategies = JSON.parse(userStrategies);
+    const strategies = JSON.parse<string[]>(userStrategies); // <-- FIX: Add type assertion
     strategies.push(strategyId);
     Storage.set(`user_strategies_${caller}`, JSON.stringify(strategies));
 
@@ -66,9 +66,6 @@ export class ChronoSwap {
     return strategyId;
   }
 
-  /**
-   * Create a limit order
-   */
   createLimitOrder(
     fromToken: string,
     toToken: string,
@@ -79,25 +76,26 @@ export class ChronoSwap {
     const caller = Context.caller().toString();
     const orderId = this._generateOrderId();
 
-    const order: Order = {
-      id: orderId,
-      user: caller,
-      fromToken: fromToken,
-      toToken: toToken,
-      amount: amount,
-      limitPrice: limitPrice,
-      expiry: expiry,
-      status: OrderStatus.PENDING,
-      createdAt: Context.timestamp(),
-      updatedAt: Context.timestamp()
-    };
+    // FIX: Change object literal to class instance
+    const order = new Order();
+    order.id = orderId;
+    order.user = caller;
+    order.fromToken = fromToken;
+    order.toToken = toToken;
+    order.amount = amount;
+    order.limitPrice = limitPrice;
+    order.expiry = expiry;
+    order.status = OrderStatus.PENDING;
+    order.createdAt = Context.timestamp();
+    order.updatedAt = Context.timestamp();
 
     // Store order
-    Storage.set(`order_${orderId}`, order);
+    // FIX: Stringify the order object before storing
+    Storage.set(`order_${orderId}`, JSON.stringify(order));
 
     // Update user's orders
     const userOrders = Storage.get(`user_orders_${caller}`) || "[]";
-    const orders = JSON.parse(userOrders);
+    const orders = JSON.parse<string[]>(userOrders); // <-- FIX: Add type assertion
     orders.push(orderId);
     Storage.set(`user_orders_${caller}`, JSON.stringify(orders));
 
@@ -112,7 +110,7 @@ export class ChronoSwap {
    * Execute a scheduled strategy
    */
   executeStrategy(strategyId: string): void {
-    const strategy = Storage.get<Strategy>(`strategy_${strategyId}`);
+    const strategy = JSON.parse<Strategy>(Storage.get(`strategy_${strategyId}`));
     if (!strategy || strategy.status !== StrategyStatus.ACTIVE) {
       generateEvent(`Strategy ${strategyId} not found or inactive`);
       return;
@@ -135,10 +133,10 @@ export class ChronoSwap {
         generateEvent(`Unknown strategy type: ${strategy.type}`);
     }
 
-    // Schedule next execution if strategy is still active
     if (strategy.status === StrategyStatus.ACTIVE) {
       strategy.nextExecution = Context.timestamp() + strategy.frequency;
-      Storage.set(`strategy_${strategyId}`, strategy);
+      // FIX: Stringify the strategy object before storing
+      Storage.set(`strategy_${strategyId}`, JSON.stringify(strategy));
       this._scheduleExecution(strategyId, strategy.nextExecution);
     }
   }
@@ -148,7 +146,8 @@ export class ChronoSwap {
    */
   cancelStrategy(strategyId: string): void {
     const caller = Context.caller().toString();
-    const strategy = Storage.get<Strategy>(`strategy_${strategyId}`);
+    // FIX: Get the string and parse it
+    const strategy = JSON.parse<Strategy>(Storage.get(`strategy_${strategyId}`));
     
     if (!strategy) {
       throw new Error("Strategy not found");
@@ -159,8 +158,9 @@ export class ChronoSwap {
     }
 
     strategy.status = StrategyStatus.CANCELLED;
-    strategy.updatedAt = Context.timestamp();
-    Storage.set(`strategy_${strategyId}`, strategy);
+    strategy.updatedAt = Context.timestamp(); // This line is now valid
+    // FIX: Stringify the strategy object before storing
+    Storage.set(`strategy_${strategyId}`, JSON.stringify(strategy));
 
     generateEvent(`Strategy cancelled: ${strategyId} by ${caller}`);
   }
@@ -185,7 +185,7 @@ export class ChronoSwap {
     call(
       Context.callee(),
       "executeStrategy",
-      [strategyId],
+      new Args().add(strategyId), // <-- CORRECTED
       timestamp
     );
   }
@@ -194,7 +194,7 @@ export class ChronoSwap {
     call(
       Context.callee(),
       "checkOrderExpiry",
-      [orderId],
+      new Args().add(orderId), // <-- CORRECTED
       expiry
     );
   }
@@ -206,8 +206,8 @@ export class ChronoSwap {
     // This would call the multi-dex router
     generateEvent(`Executing DCA strategy: ${strategy.id}`);
     
-    // Update strategy stats
     strategy.totalExecuted += 1;
-    Storage.set(`strategy_${strategy.id}`, strategy);
+    // FIX: Stringify the strategy object before storing
+    Storage.set(`strategy_${strategy.id}`, JSON.stringify(strategy));
   }
 }

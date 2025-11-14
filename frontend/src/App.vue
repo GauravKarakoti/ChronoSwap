@@ -66,28 +66,57 @@ export default {
     }
   },
   async mounted() {
-    this.massaWallet = new MassaWallet()
+    // FIX: Wrap initialization in try...catch
+    try {
+      this.massaWallet = new MassaWallet()
+      console.log('MassaWallet initialized', this.massaWallet);
     
-    // Check if already connected
-    if (await this.massaWallet.isConnected()) {
-      await this.loadWalletData()
+      // Try to auto-reconnect
+      const reconnected = await this.massaWallet.init();
+      if (reconnected) {
+        console.log('Wallet re-initialized');
+        await this.loadWalletData();
+      }
+    } catch (error) {
+      console.error('Failed to initialize wallet or auto-reconnect:', error);
+      // We can alert the user here if initialization itself fails
+      // alert('Failed to initialize wallet: ' + error.message);
     }
   },
   methods: {
     async connectWallet() {
+      // Add a check here in case initialization failed
+      if (!this.massaWallet) {
+        console.error('MassaWallet is not initialized. Trying to re-initialize.');
+        try {
+          this.massaWallet = new MassaWallet();
+        } catch (error) {
+          alert('Failed to initialize wallet. Please refresh the page. ' + error.message);
+          return;
+        }
+      }
+
       try {
         await this.massaWallet.connect()
+        console.log('Wallet connected:', this.massaWallet.getAddress())
         await this.loadWalletData()
       } catch (error) {
         console.error('Failed to connect wallet:', error)
-        alert('Failed to connect wallet. Please make sure Massa Station is installed.')
+        alert('Failed to connect wallet: ' + error.message)
       }
     },
     
     async loadWalletData() {
-      this.connected = true
+      this.connected = this.massaWallet.isConnected();
+      if (!this.connected) return;
+
       this.walletAddress = this.massaWallet.getAddress()
+      console.log('Wallet address:', this.walletAddress)
+      
+      this.balance = 'Loading...';
       this.balance = await this.massaWallet.getBalance()
+      console.log('Wallet balance:', this.balance)
+      
       await this.loadUserStrategies()
     },
     

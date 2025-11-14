@@ -1,3 +1,6 @@
+import { serializable } from "as-json";
+
+@serializable // <-- ADD THIS
 export class Order {
   id: string;
   user: string;
@@ -18,6 +21,7 @@ export enum OrderStatus {
   EXPIRED = 3
 }
 
+@serializable // <-- ADD THIS
 export class Strategy {
   id: string;
   user: string;
@@ -28,6 +32,7 @@ export class Strategy {
   totalExecuted: u64;
   status: StrategyStatus;
   config: string; // JSON string of strategy config
+  updatedAt: u64; // <-- ADD THIS LINE
 }
 
 export enum StrategyType {

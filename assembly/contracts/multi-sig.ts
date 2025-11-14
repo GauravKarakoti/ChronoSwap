@@ -1,4 +1,5 @@
-import { Storage, Context, generateEvent } from '@massa/massa-as-sdk';
+import { Storage, Context, generateEvent } from '@massalabs/massa-as-sdk';
+import { JSON } from "as-json";
 
 export class MultiSigChronoSwap {
   private static OWNERS: string[] = [
@@ -27,7 +28,7 @@ export class MultiSigChronoSwap {
       confirmedBy: [caller]
     };
 
-    Storage.set(`proposal_${proposalId}`, proposal);
+    Storage.set(`proposal_${proposalId}`, JSON.stringify(proposal));
     Storage.set(`confirmations_${proposalId}`, JSON.stringify([caller]));
 
     generateEvent(`Upgrade proposed: ${proposalId} by ${caller}`);
@@ -43,7 +44,7 @@ export class MultiSigChronoSwap {
       throw new Error("Proposal not found");
     }
 
-    const confirmations: string[] = JSON.parse(confirmationsJson);
+    const confirmations: string[] = JSON.parse<string[]>(confirmationsJson);
     if (confirmations.includes(caller)) {
       throw new Error("Already confirmed");
     }

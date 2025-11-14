@@ -68,6 +68,11 @@
               </select>
             </div>
 
+            <div v-if="selectedStrategy === 'dca'" class="form-group">
+              <label>Duration (in days)</label>
+              <input type="number" v-model="config.durationDays" placeholder="30" />
+            </div>
+
             <div v-if="selectedStrategy === 'limit-order'" class="form-group">
               <label>Limit Price</label>
               <input type="number" v-model="config.limitPrice" placeholder="0.0" />
@@ -101,6 +106,10 @@
             <div v-if="selectedStrategy === 'dca'" class="summary-item">
               <span>Frequency:</span>
               <span>{{ getFrequencyText(config.frequency) }}</span>
+            </div>
+            <div v-if="selectedStrategy === 'dca'" class="summary-item">
+              <span>Duration:</span>
+              <span>{{ config.durationDays }} days</span>
             </div>
             <div class="summary-item">
               <span>Gas Reserved:</span>
@@ -146,7 +155,8 @@ export default {
         amount: 0,
         frequency: '86400',
         limitPrice: 0,
-        gasReservation: 0.1
+        gasReservation: 0.1,
+        durationDays: 30
       },
       deploying: false,
       strategyTypes: [
@@ -236,7 +246,7 @@ export default {
       
       try {
         // This would call your smart contract
-        const strategyId = await this.$massaWallet.createStrategy({
+        const strategyId = await this.massaWallet.createStrategy({
           type: this.selectedStrategy,
           config: this.config
         })
